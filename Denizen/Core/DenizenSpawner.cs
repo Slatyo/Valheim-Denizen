@@ -58,6 +58,9 @@ namespace Denizen.Core
             // Add appropriate AI component
             AddAIComponent(instance, config);
 
+            // Configure vanilla MonsterAI based on behavior
+            ConfigureMonsterAI(instance, config);
+
             // Set level if specified
             if (level > 0)
             {
@@ -76,7 +79,7 @@ namespace Denizen.Core
             // Trigger event
             DenizenEvents.RaiseSpawned(character, denizenId);
 
-            Plugin.Log.LogDebug($"Spawned {denizenId} at {position}");
+            Plugin.Log.LogDebug($"Spawned denizen: {denizenId}");
             return character;
         }
 
@@ -242,6 +245,65 @@ namespace Denizen.Core
                     {
                         instance.AddComponent<DenizenAI>();
                     }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Configure MonsterAI based on behavior config.
+        /// This works WITH vanilla AI rather than fighting it.
+        /// </summary>
+        private static void ConfigureMonsterAI(GameObject instance, DenizenConfig config)
+        {
+            var monsterAI = instance.GetComponent<MonsterAI>();
+            if (monsterAI == null || config.Behavior == null) return;
+
+            var behavior = config.Behavior;
+
+            // Configure circling/kiting behavior for ranged
+            if (behavior.PreferredRange == CombatRange.Ranged || behavior.KeepDistance)
+            {
+                // Circle around target at ideal distance
+                float idealDist = behavior.IdealDistance > 0 ? behavior.IdealDistance : 15f;
+
+                // Clamp to reasonable values - don't let them kite infinitely
+                idealDist = Mathf.Clamp(idealDist, 8f, 20f);
+
+                monsterAI.m_circleTargetInterval = 3f;      // How often to reposition
+                monsterAI.m_circleTargetDuration = 4f;      // How long to circle
+                monsterAI.m_circleTargetDistance = idealDist; // Distance to maintain
+
+                // Randomize movement a bit
+                monsterAI.m_randomMoveInterval = 5f;
+                monsterAI.m_randomMoveRange = 8f;
+            }
+
+            // Configure flee behavior
+            if (behavior.FleeThreshold > 0)
+            {
+                monsterAI.m_fleeIfLowHealth = behavior.FleeThreshold;
+            }
+
+            // Aggression affects alert range and behavior
+            switch (behavior.Aggression)
+            {
+                case Aggression.Passive:
+                    monsterAI.m_alertRange = 5f;
+                    break;
+                case Aggression.Cautious:
+                    monsterAI.m_alertRange = 15f;
+                    break;
+                case Aggression.Normal:
+                    monsterAI.m_alertRange = 20f;
+                    break;
+                case Aggression.Aggressive:
+                    monsterAI.m_alertRange = 30f;
+                    break;
+                case Aggression.Tactical:
+                    monsterAI.m_alertRange = 25f;
+                    // Tactical AI circles more frequently
+                    monsterAI.m_circleTargetInterval = 2f;
+                    monsterAI.m_circleTargetDuration = 3f;
                     break;
             }
         }

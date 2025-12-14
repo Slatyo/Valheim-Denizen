@@ -146,8 +146,8 @@ namespace Denizen.Examples
             {
                 Name = "$enemy_smart_archer",
 
-                // Clone from Skeleton (vanilla prefab name)
-                BasedOn = "Skeleton",
+                // Clone from Draugr_Ranged for bow attacks
+                BasedOn = "Draugr_Ranged",
 
                 // Natural spawn
                 Spawning = new SpawnConfig
@@ -160,45 +160,57 @@ namespace Denizen.Examples
                     LevelChance = 0.1f
                 },
 
-                // Stats
+                // Stats - tougher than regular draugr
                 Stats = new StatConfig
                 {
                     Template = "Creature",
                     Overrides = new()
                     {
-                        ["Health"] = 80,
-                        ["Damage"] = 25,
-                        ["AttackSpeed"] = 1.2f
+                        ["Health"] = 120,
+                        ["Damage"] = 35,
+                        ["Armor"] = 10,
+                        ["AttackSpeed"] = 1.3f
                     }
                 },
 
-                // Tactical behavior - kites and dodges
+                // Smart tactical behavior
                 Behavior = new BehaviorConfig
                 {
                     Aggression = Aggression.Tactical,
                     GroupBehavior = GroupBehavior.Pack,
-                    FleeThreshold = 0.15f,
-                    Targeting = TargetPriority.LowestArmor,
+                    FleeThreshold = 0f,  // Never flee - stand and fight
+                    Targeting = TargetPriority.Nearest,
                     PreferredRange = CombatRange.Ranged,
                     KeepDistance = true,
-                    IdealDistance = 20f,
+                    IdealDistance = 10f,
                     CallHelpRange = 25f,
                     Reactions = new()
                     {
-                        new ReactionConfig
-                        {
-                            Reaction = Reaction.Retreat,
-                            Trigger = Trigger.OnTargetTooClose,
-                            Distance = 8f,
-                            Cooldown = 5f
-                        },
+                        // High chance to dodge player attacks
                         new ReactionConfig
                         {
                             Reaction = Reaction.Dodge,
                             Trigger = Trigger.OnIncomingAttack,
-                            Chance = 0.3f,
-                            Cooldown = 2f
+                            Chance = 0.6f,  // 60% dodge chance
+                            Cooldown = 1.5f
                         },
+                        // Block if dodge on cooldown
+                        new ReactionConfig
+                        {
+                            Reaction = Reaction.Block,
+                            Trigger = Trigger.OnIncomingAttack,
+                            Chance = 0.4f,
+                            Cooldown = 3f
+                        },
+                        // Back off if player gets too close
+                        new ReactionConfig
+                        {
+                            Reaction = Reaction.Retreat,
+                            Trigger = Trigger.OnTargetTooClose,
+                            Distance = 4f,
+                            Cooldown = 3f
+                        },
+                        // Call allies when hit
                         new ReactionConfig
                         {
                             Reaction = Reaction.CallForHelp,
